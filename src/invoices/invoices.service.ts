@@ -6,7 +6,8 @@ import {
 import { PrismaService } from '../database/prisma.service';
 import { CreateInvoiceDto, CreateLineItemDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
-import { Prisma } from '@prisma/client';
+import { Prisma, InvoiceStatus } from '@prisma/client';
+
 
 @Injectable()
 export class InvoicesService {
@@ -205,26 +206,26 @@ export class InvoicesService {
   async send(tenantId: string, id: string) {
     const invoice = await this.findOne(tenantId, id);
 
-    if (invoice.status !== 'DRAFT') {
+    if (invoice.status !== InvoiceStatus.DRAFT) {
       throw new BadRequestException('Only draft invoices can be sent');
     }
 
     return this.prisma.invoice.update({
       where: { id },
-      data: { status: 'SENT' },
+      data: { status: InvoiceStatus.SENT },
     });
   }
 
   async cancel(tenantId: string, id: string) {
     const invoice = await this.findOne(tenantId, id);
 
-    if (['PAID', 'CANCELLED'].includes(invoice.status)) {
+    if (invoice.status === InvoiceStatus.PAID || invoice.status === InvoiceStatus.CANCELLED) {
       throw new BadRequestException('Cannot cancel this invoice');
     }
 
     return this.prisma.invoice.update({
       where: { id },
-      data: { status: 'CANCELLED' },
+      data: { status: InvoiceStatus.CANCELLED },
     });
   }
 }
