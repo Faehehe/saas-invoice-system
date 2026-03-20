@@ -7,17 +7,23 @@ import { ProductsModule } from './products/products.module';
 import { InvoicesModule } from './invoices/invoices.module';
 import { PaymentsModule } from './payments/payments.module';
 import { ReportsModule } from './reports/reports.module';
+import { QueueModule } from './queue/queue.module';
+import { StorageModule } from './storage/storage.module';
+import { PdfModule } from './pdf/pdf.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     DatabaseModule,
+    QueueModule,
+    StorageModule,
     AuthModule,
     CustomersModule,
     ProductsModule,
     InvoicesModule,
     PaymentsModule,
     ReportsModule,
+    PdfModule,
   ],
 })
 export class AppModule {}

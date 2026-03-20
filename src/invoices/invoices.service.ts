@@ -7,11 +7,16 @@ import { PrismaService } from '../database/prisma.service';
 import { CreateInvoiceDto, CreateLineItemDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { Prisma, InvoiceStatus } from '@prisma/client';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+import { StorageService } from '../storage/storage.service';
 
 
 @Injectable()
 export class InvoicesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, 
+    @InjectQueue('pdf-generation') private pdfQueue: Queue,
+  private storageService: StorageService,) {}
 
   // ============================================================
   // CREATE — The most complex operation. Everything in ONE transaction.
@@ -204,17 +209,25 @@ export class InvoicesService {
   // STATUS TRANSITIONS
   // ============================================================
   async send(tenantId: string, id: string) {
-    const invoice = await this.findOne(tenantId, id);
+  const invoice = await this.findOne(tenantId, id);
 
-    if (invoice.status !== InvoiceStatus.DRAFT) {
-      throw new BadRequestException('Only draft invoices can be sent');
-    }
-
-    return this.prisma.invoice.update({
-      where: { id },
-      data: { status: InvoiceStatus.SENT },
-    });
+  if (invoice.status !== InvoiceStatus.DRAFT) {
+    throw new BadRequestException('Only draft invoices can be sent');
   }
+
+  const updated = await this.prisma.invoice.update({
+    where: { id },
+    data: { status: InvoiceStatus.SENT },
+  });
+
+  // Queue PDF generation in the background
+  await this.pdfQueue.add('generate-invoice-pdf', {
+    invoiceId: id,
+    tenantId,
+  });
+
+  return updated;
+}
 
   async cancel(tenantId: string, id: string) {
     const invoice = await this.findOne(tenantId, id);
@@ -227,5 +240,18 @@ export class InvoicesService {
       where: { id },
       data: { status: InvoiceStatus.CANCELLED },
     });
+  }
+
+  async getPdfUrl(tenantId: string, id: string) {
+    const invoice = await this.findOne(tenantId, id);
+
+    if (!invoice.pdfUrl) {
+      throw new BadRequestException('PDF not generated yet');
+    }
+
+    const path = `${tenantId}/${id}.pdf`;
+    const url = await this.storageService.getPresignedUrl(path);
+
+    return { url };
   }
 }

@@ -77,4 +77,12 @@ export class InvoicesController {
   ) {
     return this.invoicesService.cancel(tenantId, id);
   }
+
+  @Get(':id/pdf')
+  async getPdf(
+    @CurrentUser('tenantId') tenantId: string,
+    @Param('id') id: string,
+  ) {
+    return this.invoicesService.getPdfUrl(tenantId, id);
+  }
 }
