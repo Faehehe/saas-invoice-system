@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsNumber, Min, IsDateString, IsEnum } from 'class-validator';
+import { IsString, IsOptional, IsNumber, Min, IsDateString, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export enum PaymentMethod {
